@@ -29,10 +29,11 @@ def execute(args):
     for i, row in enumerate(cur):
         locale,= row
 
+        print i, "Checking %s" % locale
         t = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
         update.execute(time_SQL, (source, t, locale,))
         
-        result = gn.geocode(locale)
+        result = gn.geocode(locale, exactly_one=False)
         if result == None:
             print i, "Unfound location %s" % locale
             update.execute(notfound_SQL, (locale,))
