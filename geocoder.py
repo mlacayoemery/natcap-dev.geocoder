@@ -14,8 +14,11 @@ def execute(args):
     cur = database.cursor()
     update = database.cursor()
 
-    search_SQL = "SELECT locale FROM locales WHERE geocoded IS NULL"
-    update_SQL = "UPDATE locales SET longitude=%d, latitude=%d, way=ST_GeographyFromText(\'POINT(%d %d)\') WHERE locale=\'%s\'"
+    search_SQL = "SELECT locale FROM locales WHERE result IS NULL"
+
+    notfound_SQL = "UPDATE locales SET result='None', result_count=0 WHERE locale=\'%s\'"
+    manyfound_SQL = "UPDATE locales SET longitude=%s, latitude=%s, way=ST_GeographyFromText(\'POINT(%s %s)\'), result=%s, result_count=%i WHERE locale=\'%s\'"
+    onefound_SQL = "UPDATE locales SET longitude=%s, latitude=%s, way=ST_GeographyFromText(\'POINT(%s %s)\'), result=%s, result_count=1 WHERE locale=\'%s\'"
     time_SQL = "UPDATE locales SET source=\'%s\', geocoded=\'%s\' WHERE locale=\'%s\'"
 
 
@@ -25,27 +28,32 @@ def execute(args):
     cur.execute(search_SQL)
     for i, row in enumerate(cur):
         locale,= row
-        locale = locale.replace("'","''")
-        if locale.count("/") < 1:
-            try:
-                t = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
-                update.execute(time_SQL % (source, t, locale))
-                database.commit()
-                
-                place, (lat, lng) = gn.geocode(locale, exactly_one=True)
-                if lat < -90 or lat > 90 or lng < -180 or lng >180:
-                    print i, "Out of range %s" % locale
-                else:
-                    print update_SQL % (lng,lat,lng,lat, locale, t)
-                    update.execute(update_SQL % (lng,lat,lng,lat, locale), t)
-                    database.commit()
-                    print i, "Geocoded %s" % locale
-            except TypeError:
-                print i, "Unfound location %s" % locale
-            except ValueError:
-                print i, "Multiple locations %s" % locale
+
+        t = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
+        update.execute(time_SQL % (source, t, locale.replace("'","''")))
+        
+        result = gn.geocode(locale)
+        if result == None:
+            print i, "Unfound location %s" % locale
+            update.execute(notfound_SQL)
+            
+        elif type(result) == list:
+            print i, "Multiple locations %s" % locale
+            result_count = len(result)
+            _, (lat, lng) = result[0]
+            update.execute(manyfound_SQL % (str(lng),str(lat),str(lng),str(lat), repr(result), result_count, str(locale)))
+            
+        elif type(result) == tuple:
+            _, (lat, lng) = result
+            if lat < -90 or lat > 90 or lng < -180 or lng >180:
+                print i, "Out of range %s" % locale
+
+            print "Found %s" % locale
+            update.execute(onefound_SQL % (str(lng),str(lat),str(lng),str(lat), repr(result), str(locale)))
         else:
-            print i, "Unfriendly name %s" % locale
+            print i, "Results not recognized %s" % locale
+
+        database.commit()
 
     cur.close()
     database.commit()
