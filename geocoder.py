@@ -19,7 +19,7 @@ def execute(args):
     notfound_SQL = "UPDATE locales SET result='None', result_count=0 WHERE locale=%s"
     manyfound_SQL = "UPDATE locales SET longitude=%f, latitude=%f, way=ST_GeographyFromText(\'POINT(%f %f)\'), result=%s, result_count=%i WHERE locale=%s"
     onefound_SQL = "UPDATE locales SET longitude=%f, latitude=%f, way=ST_GeographyFromText(\'POINT(%f %f)\'), result=%s, result_count=1 WHERE locale=%s"
-    time_SQL = "UPDATE locales SET source=\'%s\', geocoded=\'%s\' WHERE locale=\'%s\'"
+    time_SQL = "UPDATE locales SET source=%s, geocoded=%s WHERE locale=%s"
 
 
     source = "GeoNames"
