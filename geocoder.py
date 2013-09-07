@@ -16,9 +16,9 @@ def execute(args):
 
     search_SQL = "SELECT locale FROM locales WHERE result IS NULL"
 
-    notfound_SQL = "UPDATE locales SET result='None', result_count=0 WHERE locale=\'%s\'"
-    manyfound_SQL = "UPDATE locales SET longitude=%s, latitude=%s, way=ST_GeographyFromText(\'POINT(%s %s)\'), result=%s, result_count=%i WHERE locale=\'%s\'"
-    onefound_SQL = "UPDATE locales SET longitude=%s, latitude=%s, way=ST_GeographyFromText(\'POINT(%s %s)\'), result=%s, result_count=1 WHERE locale=\'%s\'"
+    notfound_SQL = "UPDATE locales SET result='None', result_count=0 WHERE locale=%s"
+    manyfound_SQL = "UPDATE locales SET longitude=%f, latitude=%f, way=ST_GeographyFromText(\'POINT(%f %f)\'), result=%s, result_count=%i WHERE locale=%s"
+    onefound_SQL = "UPDATE locales SET longitude=%f, latitude=%f, way=ST_GeographyFromText(\'POINT(%f %f)\'), result=%s, result_count=1 WHERE locale=%s"
     time_SQL = "UPDATE locales SET source=\'%s\', geocoded=\'%s\' WHERE locale=\'%s\'"
 
 
@@ -30,18 +30,18 @@ def execute(args):
         locale,= row
 
         t = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
-        update.execute(time_SQL % (source, t, locale.replace("'","''")))
+        update.execute(time_SQL, (source, t, locale,))
         
         result = gn.geocode(locale)
         if result == None:
             print i, "Unfound location %s" % locale
-            update.execute(notfound_SQL)
+            update.execute(notfound_SQL, (locale,))
             
         elif type(result) == list:
             print i, "Multiple locations %s" % locale
             result_count = len(result)
             _, (lat, lng) = result[0]
-            update.execute(manyfound_SQL % (str(lng),str(lat),str(lng),str(lat), repr(result), result_count, str(locale)))
+            update.execute(manyfound_SQL, (lng, lat, lng, lat, repr(result), result_count, locale,))
             
         elif type(result) == tuple:
             _, (lat, lng) = result
@@ -49,7 +49,7 @@ def execute(args):
                 print i, "Out of range %s" % locale
 
             print "Found %s" % locale
-            update.execute(onefound_SQL % (str(lng),str(lat),str(lng),str(lat), repr(result), str(locale)))
+            update.execute(manyfound_SQL, (lng, lat, lng, lat, repr(result), locale,))
         else:
             print i, "Results not recognized %s" % locale
 
